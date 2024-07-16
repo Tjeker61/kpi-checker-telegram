@@ -81,7 +81,7 @@
         // Функция для получения данных от n8n
         async function fetchData() {
             const userId = tg.initDataUnsafe?.user?.id || 'default';
-            const response = await fetch(`https://your-n8n-instance.com/webhook/kpi-data?userId=${userId}`);
+            const response = await fetch(`https://n8n61-fa4ea4ac7379.herokuapp.com/webhook-test/68ee9348-31e9-4b8a-9954-58e2dd779db6?userId=${userId}`);
             const data = await response.json();
             return data;
         }
