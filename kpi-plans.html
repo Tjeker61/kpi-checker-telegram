@@ -89,7 +89,7 @@
                 if (data.error) {
                     throw new Error(data.error);
                 }
-                return Array.isArray(data) ? data : [data];
+                return data;
             } catch (error) {
                 console.error("Ошибка при загрузке данных:", error);
                 throw error;
@@ -97,10 +97,19 @@
         }
 
         function createTable(data) {
+            if (!data[0] || !data[0].kpi_table) {
+                throw new Error('Неверный формат данных');
+            }
+
+            const kpiData = data[0].kpi_table;
+
             let tableHTML = `
                 <table>
                     <thead>
                         <tr>
+                            <th>Project ID</th>
+                            <th>Project Name</th>
+                            <th>Site Name</th>
                             <th>KPI ID</th>
                             <th>Project Site ID</th>
                             <th>Posting Plan</th>
@@ -115,13 +124,16 @@
                     <tbody>
             `;
 
-            data.forEach(row => {
+            kpiData.forEach(row => {
                 tableHTML += `
                     <tr>
+                        <td>${row.project_id}</td>
+                        <td>${row.project_name}</td>
+                        <td>${row.site_name}</td>
                         <td>${row.kpi_id}</td>
                         <td>${row.project_site_id}</td>
                         <td>${row.posting_plan ?? '-'}</td>
-                        <td>${row.spent_plan_total}</td>
+                        <td>${row.spent_plan_total ?? '-'}</td>
                         <td>${row.spent_reach_plan ?? '-'}</td>
                         <td>${row.spent_grow_plan ?? '-'}</td>
                         <td>${row.reach_plan ?? '-'}</td>
