@@ -278,6 +278,10 @@
     const userId = tg.initDataUnsafe?.user?.id;
     const username = tg.initDataUnsafe?.user?.username;
 
+    console.log('Начало функции saveChanges');
+    console.log('userId:', userId);
+    console.log('username:', username);
+
     const dataToSend = {
         ...formData,
         project_id: kpiData[currentEditIndex].project_id,
@@ -285,12 +289,13 @@
         project_site_id: kpiData[currentEditIndex].project_site_id
     };
 
-    console.log('Отправляемые данные:', dataToSend);
+    console.log('Данные для отправки:', dataToSend);
+
+    const url = `https://your-n8n-instance.com/webhook/kpi-app?userId=${userId}&username=${username}&page=kpi-plans&action=update-data`;
+    console.log('URL для отправки:', url);
 
     try {
-        const url = `https://n8n61-fa4ea4ac7379.herokuapp.com/webhook-test/kpi-checker-web?userId=${userId}&username=${username}&page=kpi-plans&action=update-data`;
-        console.log('URL запроса:', url);
-
+        console.log('Отправка запроса...');
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -299,7 +304,7 @@
             body: JSON.stringify(dataToSend),
         });
 
-        console.log('Статус ответа:', response.status);
+        console.log('Ответ получен. Статус:', response.status);
         const responseText = await response.text();
         console.log('Тело ответа:', responseText);
 
@@ -307,31 +312,31 @@
             throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const result = JSON.parse(responseText);
-        return result;
+        return JSON.parse(responseText);
     } catch (error) {
         console.error("Ошибка при сохранении данных:", error);
         throw error;
     }
 }
 
-        document.getElementById('editForm').addEventListener('submit', async function(e) {
+document.getElementById('editForm').addEventListener('submit', async function(e) {
     e.preventDefault();
+    console.log('Форма отправлена');
     const formData = Object.fromEntries(new FormData(e.target));
+    console.log('Данные формы:', formData);
+
     try {
+        console.log('Вызов функции saveChanges');
         const result = await saveChanges(formData);
         console.log('Результат сохранения:', result);
-        if (result.success) {
-            // Обновляем только редактируемые поля в kpiData
-            Object.keys(formData).forEach(key => {
-                kpiData[currentEditIndex][key] = formData[key];
-            });
-            createTable(kpiData);
-            document.getElementById('editModal').style.display = 'none';
-            tg.showAlert('Изменения сохранены успешно');
-        } else {
-            throw new Error(result.message || 'Неизвестная ошибка');
-        }
+
+        // Обновляем только редактируемые поля в kpiData
+        Object.keys(formData).forEach(key => {
+            kpiData[currentEditIndex][key] = formData[key];
+        });
+        createTable(kpiData);
+        document.getElementById('editModal').style.display = 'none';
+        tg.showAlert('Изменения сохранены успешно');
     } catch (error) {
         console.error('Ошибка при сохранении:', error);
         tg.showAlert(`Ошибка при сохранении изменений: ${error.message}`);
