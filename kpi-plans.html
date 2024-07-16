@@ -3,28 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KPI Планы (Отладка)</title>
+    <title>KPI Планы</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        /* ... (предыдущие стили остаются без изменений) ... */
-        #debug-info {
-            white-space: pre-wrap;
-            font-family: monospace;
-            background-color: #f0f0f0;
-            padding: 10px;
-            margin-top: 20px;
-            border-radius: 5px;
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.5;
+            margin: 0;
+            padding: 16px;
+            color: var(--tg-theme-text-color, #000000);
+            background-color: var(--tg-theme-bg-color, #ffffff);
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 500;
+            margin-bottom: 24px;
+            text-align: center;
+            color: var(--tg-theme-text-color, #000000);
+        }
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            border-radius: 10px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 14px;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--tg-theme-hint-color, #cccccc);
+        }
+        thead {
+            background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+        }
+        th {
+            font-weight: 500;
+            color: var(--tg-theme-hint-color, #999999);
+            cursor: pointer;
+        }
+        th:hover {
+            background-color: var(--tg-theme-hint-color, #cccccc);
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        #loading, #error-message {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+        #error-message {
+            color: #ff0000;
         }
     </style>
 </head>
 <body>
-    <h1>KPI Планы (Отладка)</h1>
+    <h1>KPI Планы</h1>
     <div id="loading">Загрузка данных...</div>
     <div id="error-message" style="display:none;"></div>
     <div id="table-container" class="table-container" style="display:none;">
         <!-- Таблица будет динамически заполнена -->
     </div>
-    <div id="debug-info"></div>
 
     <script>
         let tg = window.Telegram.WebApp;
@@ -33,17 +78,10 @@
 
         let kpiData = [];
 
-        function debugLog(message) {
-            console.log(message);
-            document.getElementById('debug-info').textContent += message + '\n';
-        }
-
         async function fetchData() {
             const userId = tg.initDataUnsafe?.user?.id;
             const username = tg.initDataUnsafe?.user?.username;
             
-            debugLog(`Fetching data for user: ${userId}, ${username}`);
-
             if (!userId) {
                 throw new Error('Не удалось получить ID пользователя');
             }
@@ -54,33 +92,12 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
-                debugLog(`Received data: ${JSON.stringify(data, null, 2)}`);
-                
-                if (!data) {
-                    throw new Error('Получены пустые данные');
+                if (!Array.isArray(data) || data.length === 0) {
+                    throw new Error('Неверный формат данных или пустой массив');
                 }
-                
-                if (Array.isArray(data)) {
-                    debugLog('Data is an array');
-                    if (data.length === 0) {
-                        throw new Error('Получен пустой массив данных');
-                    }
-                    if (data[0].kpi_table) {
-                        debugLog('Found kpi_table in the first array element');
-                        return data[0].kpi_table;
-                    } else {
-                        debugLog('kpi_table not found in the first array element, returning the whole array');
-                        return data;
-                    }
-                } else if (typeof data === 'object' && data.kpi_table) {
-                    debugLog('Data is an object with kpi_table property');
-                    return data.kpi_table;
-                } else {
-                    debugLog('Unexpected data structure');
-                    throw new Error('Неожиданная структура данных');
-                }
+                return data;
             } catch (error) {
-                debugLog(`Error in fetchData: ${error.message}`);
+                console.error("Ошибка при загрузке данных:", error);
                 throw error;
             }
         }
@@ -90,13 +107,20 @@
         }
 
         function createTable(data) {
-            debugLog(`Creating table with data: ${JSON.stringify(data, null, 2)}`);
-            
-            if (!Array.isArray(data) || data.length === 0) {
-                throw new Error('Нет данных для отображения');
-            }
-
-            const headers = Object.keys(data[0]).map(key => ({ key, label: key }));
+            const headers = [
+                { key: 'project_id', label: 'Project ID' },
+                { key: 'project_name', label: 'Project Name' },
+                { key: 'site_name', label: 'Site Name' },
+                { key: 'kpi_id', label: 'KPI ID' },
+                { key: 'project_site_id', label: 'Project Site ID' },
+                { key: 'posting_plan', label: 'Posting Plan' },
+                { key: 'spent_plan_total', label: 'Spent Plan Total' },
+                { key: 'spent_reach_plan', label: 'Spent Reach Plan' },
+                { key: 'spent_grow_plan', label: 'Spent Grow Plan' },
+                { key: 'reach_plan', label: 'Reach Plan' },
+                { key: 'reactions_plan', label: 'Reactions Plan' },
+                { key: 'grow_plan', label: 'Grow Plan' }
+            ];
 
             let tableHTML = `
                 <table>
@@ -122,7 +146,6 @@
             `;
 
             document.getElementById('table-container').innerHTML = tableHTML;
-            debugLog('Table created successfully');
 
             // Add sorting functionality
             document.querySelectorAll('th').forEach(th => {
@@ -134,7 +157,6 @@
         }
 
         function sortTable(key) {
-            debugLog(`Sorting table by ${key}`);
             kpiData.sort((a, b) => {
                 if (a[key] === null) return 1;
                 if (b[key] === null) return -1;
@@ -146,18 +168,15 @@
         }
 
         window.onload = async function() {
-            debugLog('Page loaded, starting data fetch');
             try {
                 kpiData = await fetchData();
                 createTable(kpiData);
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('table-container').style.display = 'block';
-                debugLog('Data loaded and table displayed successfully');
             } catch (error) {
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('error-message').style.display = 'block';
                 document.getElementById('error-message').textContent = `Ошибка: ${error.message}`;
-                debugLog(`Error in onload: ${error.message}`);
                 console.error("Подробности ошибки:", error);
             }
         };
