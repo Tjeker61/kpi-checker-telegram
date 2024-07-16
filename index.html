@@ -21,6 +21,16 @@
             text-align: center;
             color: var(--tg-theme-text-color, #000000);
         }
+        .auth-block {
+            background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 24px;
+        }
+        .auth-status {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
         .nav-button {
             background-color: var(--tg-theme-button-color, #3390ec);
             color: var(--tg-theme-button-text-color, #ffffff);
@@ -42,6 +52,11 @@
 </head>
 <body>
     <h1>KPI Checker App (Alpha)</h1>
+    
+    <div class="auth-block">
+        <div class="auth-status">Статус авторизации: <span id="auth-result">Проверка...</span></div>
+    </div>
+
     <button class="nav-button" onclick="navigateTo('kpi-plans.html')">KPI Планы</button>
     <button class="nav-button" onclick="navigateTo('current-campaigns.html')">Актуальные кампании</button>
 
@@ -53,6 +68,31 @@
         function navigateTo(page) {
             window.location.href = page;
         }
+
+        async function authorizeUser() {
+            const userId = tg.initDataUnsafe?.user?.id;
+            const username = tg.initDataUnsafe?.user?.username;
+            
+            if (!userId) {
+                document.getElementById('auth-result').textContent = 'Ошибка: Не удалось получить ID пользователя';
+                return;
+            }
+
+            try {
+                const response = await fetch(`https://n8n61-fa4ea4ac7379.herokuapp.com/webhook-test/kpi-checker-web?userId=${userId}&username=${username}&page=main&action=authorize`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.text();
+                document.getElementById('auth-result').textContent = data;
+            } catch (error) {
+                console.error("Ошибка при авторизации:", error);
+                document.getElementById('auth-result').textContent = 'Ошибка при авторизации';
+            }
+        }
+
+        // Вызываем функцию авторизации при загрузке страницы
+        window.onload = authorizeUser;
     </script>
 </body>
 </html>
