@@ -93,8 +93,11 @@
                             <th>Project Site ID</th>
                             <th>Posting Plan</th>
                             <th>Spent Plan Total</th>
+                            <th>Spent Reach Plan</th>
+                            <th>Spent Grow Plan</th>
                             <th>Reach Plan</th>
                             <th>Reactions Plan</th>
+                            <th>Grow Plan</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -105,10 +108,13 @@
                     <tr>
                         <td>${row.kpi_id}</td>
                         <td>${row.project_site_id}</td>
-                        <td>${row.posting_plan || '-'}</td>
+                        <td>${row.posting_plan ?? '-'}</td>
                         <td>${row.spent_plan_total}</td>
-                        <td>${row.reach_plan || '-'}</td>
-                        <td>${row.reactions_plan || '-'}</td>
+                        <td>${row.spent_reach_plan ?? '-'}</td>
+                        <td>${row.spent_grow_plan ?? '-'}</td>
+                        <td>${row.reach_plan ?? '-'}</td>
+                        <td>${row.reactions_plan ?? '-'}</td>
+                        <td>${row.grow_plan ?? '-'}</td>
                     </tr>
                 `;
             });
