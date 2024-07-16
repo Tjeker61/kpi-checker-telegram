@@ -316,21 +316,27 @@
 }
 
         document.getElementById('editForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const formData = Object.fromEntries(new FormData(e.target));
-            try {
-                await saveChanges(formData);
-                // Обновляем только редактируемые поля в kpiData
-                Object.keys(formData).forEach(key => {
-                    kpiData[currentEditIndex][key] = formData[key];
-                });
-                createTable(kpiData);
-                document.getElementById('editModal').style.display = 'none';
-                tg.showAlert('Изменения сохранены успешно');
-            } catch (error) {
-                tg.showAlert('Ошибка при сохранении изменений');
-            }
-        });
+    e.preventDefault();
+    const formData = Object.fromEntries(new FormData(e.target));
+    try {
+        const result = await saveChanges(formData);
+        console.log('Результат сохранения:', result);
+        if (result.success) {
+            // Обновляем только редактируемые поля в kpiData
+            Object.keys(formData).forEach(key => {
+                kpiData[currentEditIndex][key] = formData[key];
+            });
+            createTable(kpiData);
+            document.getElementById('editModal').style.display = 'none';
+            tg.showAlert('Изменения сохранены успешно');
+        } else {
+            throw new Error(result.message || 'Неизвестная ошибка');
+        }
+    } catch (error) {
+        console.error('Ошибка при сохранении:', error);
+        tg.showAlert(`Ошибка при сохранении изменений: ${error.message}`);
+    }
+});
 
         document.querySelector('.close').addEventListener('click', function() {
             document.getElementById('editModal').style.display = 'none';
