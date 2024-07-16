@@ -151,6 +151,9 @@
         let adListsData = [];
         let currentEditIndex = -1;
 
+        // Определяем видимые колонки
+        const visibleColumns = ['project_name', 'site_name', 'ads_name', 'content_campaign_ids', 'grow_campaign_ids', 'darkpost_campaign_ids'];
+
         async function fetchData() {
             const userId = tg.initDataUnsafe?.user?.id;
             const username = tg.initDataUnsafe?.user?.username;
@@ -183,7 +186,7 @@
                 { key: 'content_campaign_ids', label: 'Content Campaign IDs' },
                 { key: 'grow_campaign_ids', label: 'Grow Campaign IDs' },
                 { key: 'darkpost_campaign_ids', label: 'Darkpost Campaign IDs' }
-            ];
+            ].filter(h => visibleColumns.includes(h.key));
 
             let tableHTML = `
                 <table>
@@ -272,15 +275,18 @@
             const processedData = Object.fromEntries(
                 Object.entries(formData).map(([key, value]) => [
                     key,
-                    value.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id))
+                    value.split(',').map(id => id.trim()).filter(id => id !== '')
                 ])
             );
 
             // Добавляем идентификаторы к данным формы
             const dataToSend = {
                 ...processedData,
+                project_id: adListsData[currentEditIndex].project_id,
                 project_name: adListsData[currentEditIndex].project_name,
                 site_name: adListsData[currentEditIndex].site_name,
+                ad_id: adListsData[currentEditIndex].ad_id,
+                project_site_id: adListsData[currentEditIndex].project_site_id,
                 ads_name: adListsData[currentEditIndex].ads_name
             };
 
@@ -318,7 +324,7 @@
                 const result = await saveChanges(formData);
                 // Обновляем только редактируемые поля в adListsData
                 Object.keys(formData).forEach(key => {
-                    adListsData[currentEditIndex][key] = formData[key].split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id));
+                    adListsData[currentEditIndex][key] = formData[key].split(',').map(id => id.trim()).filter(id => id !== '');
                 });
                 createTable(adListsData);
                 document.getElementById('editModal').style.display = 'none';
