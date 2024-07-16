@@ -44,6 +44,10 @@
         th {
             font-weight: 500;
             color: var(--tg-theme-hint-color, #999999);
+            cursor: pointer;
+        }
+        th:hover {
+            background-color: var(--tg-theme-hint-color, #cccccc);
         }
         tr:last-child td {
             border-bottom: none;
@@ -72,6 +76,8 @@
         tg.expand();
         tg.MainButton.setText("Назад").show().onClick(function(){ window.location.href = 'index.html'; });
 
+        let kpiData = [];
+
         async function fetchData() {
             const userId = tg.initDataUnsafe?.user?.id;
             const username = tg.initDataUnsafe?.user?.username;
@@ -89,56 +95,47 @@
                 if (data.error) {
                     throw new Error(data.error);
                 }
-                return data;
+                return data[0].kpi_table;
             } catch (error) {
                 console.error("Ошибка при загрузке данных:", error);
                 throw error;
             }
         }
 
-        function createTable(data) {
-            if (!data || !data.kpi_table) {
-                throw new Error('Неверный формат данных');
-            }
+        function formatNumber(num) {
+            return num ? num.toLocaleString('ru-RU') : '-';
+        }
 
-            const kpiData = data.kpi_table;
+        function createTable(data) {
+            const headers = [
+                { key: 'project_id', label: 'Project ID' },
+                { key: 'project_name', label: 'Project Name' },
+                { key: 'site_name', label: 'Site Name' },
+                { key: 'kpi_id', label: 'KPI ID' },
+                { key: 'project_site_id', label: 'Project Site ID' },
+                { key: 'posting_plan', label: 'Posting Plan' },
+                { key: 'spent_plan_total', label: 'Spent Plan Total' },
+                { key: 'spent_reach_plan', label: 'Spent Reach Plan' },
+                { key: 'spent_grow_plan', label: 'Spent Grow Plan' },
+                { key: 'reach_plan', label: 'Reach Plan' },
+                { key: 'reactions_plan', label: 'Reactions Plan' },
+                { key: 'grow_plan', label: 'Grow Plan' }
+            ];
 
             let tableHTML = `
                 <table>
                     <thead>
                         <tr>
-                            <th>Project ID</th>
-                            <th>Project Name</th>
-                            <th>Site Name</th>
-                            <th>KPI ID</th>
-                            <th>Project Site ID</th>
-                            <th>Posting Plan</th>
-                            <th>Spent Plan Total</th>
-                            <th>Spent Reach Plan</th>
-                            <th>Spent Grow Plan</th>
-                            <th>Reach Plan</th>
-                            <th>Reactions Plan</th>
-                            <th>Grow Plan</th>
+                            ${headers.map(h => `<th data-key="${h.key}">${h.label}</th>`).join('')}
                         </tr>
                     </thead>
                     <tbody>
             `;
 
-            kpiData.forEach(row => {
+            data.forEach(row => {
                 tableHTML += `
                     <tr>
-                        <td>${row.project_id}</td>
-                        <td>${row.project_name}</td>
-                        <td>${row.site_name}</td>
-                        <td>${row.kpi_id}</td>
-                        <td>${row.project_site_id}</td>
-                        <td>${row.posting_plan ?? '-'}</td>
-                        <td>${row.spent_plan_total ?? '-'}</td>
-                        <td>${row.spent_reach_plan ?? '-'}</td>
-                        <td>${row.spent_grow_plan ?? '-'}</td>
-                        <td>${row.reach_plan ?? '-'}</td>
-                        <td>${row.reactions_plan ?? '-'}</td>
-                        <td>${row.grow_plan ?? '-'}</td>
+                        ${headers.map(h => `<td>${h.key.includes('plan') ? formatNumber(row[h.key]) : (row[h.key] ?? '-')}</td>`).join('')}
                     </tr>
                 `;
             });
@@ -149,12 +146,31 @@
             `;
 
             document.getElementById('table-container').innerHTML = tableHTML;
+
+            // Add sorting functionality
+            document.querySelectorAll('th').forEach(th => {
+                th.addEventListener('click', () => {
+                    const key = th.getAttribute('data-key');
+                    sortTable(key);
+                });
+            });
+        }
+
+        function sortTable(key) {
+            kpiData.sort((a, b) => {
+                if (a[key] === null) return 1;
+                if (b[key] === null) return -1;
+                if (a[key] < b[key]) return -1;
+                if (a[key] > b[key]) return 1;
+                return 0;
+            });
+            createTable(kpiData);
         }
 
         window.onload = async function() {
             try {
-                const data = await fetchData();
-                createTable(data);
+                kpiData = await fetchData();
+                createTable(kpiData);
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('table-container').style.display = 'block';
             } catch (error) {
