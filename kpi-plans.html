@@ -97,11 +97,11 @@
         }
 
         function createTable(data) {
-            if (!data[0] || !data[0].kpi_table) {
+            if (!data || !data.kpi_table) {
                 throw new Error('Неверный формат данных');
             }
 
-            const kpiData = data[0].kpi_table;
+            const kpiData = data.kpi_table;
 
             let tableHTML = `
                 <table>
