@@ -136,7 +136,7 @@
     <div id="editModal" class="modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2>Редактировать запись</h2>
+            <h2 id="modalTitle">Редактировать план</h2>
             <form id="editForm">
                 <!-- Форма будет динамически заполнена -->
             </form>
@@ -254,16 +254,20 @@
             const modal = document.getElementById('editModal');
             const form = document.getElementById('editForm');
 
+            // Обновляем заголовок модального окна
+            document.getElementById('modalTitle').textContent = `Редактировать план ${data.project_name}-${data.site_name}`;
+
+            const editableFields = ['posting_plan', 'spent_plan_total', 'spent_reach_plan', 'spent_grow_plan', 'reach_plan', 'reactions_plan', 'grow_plan'];
+            
             let formHTML = '';
-            for (const [key, value] of Object.entries(data)) {
-                const isReadOnly = ['project_id', 'kpi_id', 'project_site_id'].includes(key);
+            editableFields.forEach(key => {
                 formHTML += `
                     <div class="form-group">
                         <label for="${key}">${key}</label>
-                        <input type="text" id="${key}" name="${key}" value="${value ?? ''}" ${isReadOnly ? 'readonly' : ''}>
+                        <input type="text" id="${key}" name="${key}" value="${data[key] ?? ''}">
                     </div>
                 `;
-            }
+            });
             formHTML += '<button type="submit" class="save-btn">Сохранить</button>';
             form.innerHTML = formHTML;
 
@@ -274,13 +278,21 @@
             const userId = tg.initDataUnsafe?.user?.id;
             const username = tg.initDataUnsafe?.user?.username;
 
+            // Добавляем идентификаторы к данным формы
+            const dataToSend = {
+                ...formData,
+                project_id: kpiData[currentEditIndex].project_id,
+                kpi_id: kpiData[currentEditIndex].kpi_id,
+                project_site_id: kpiData[currentEditIndex].project_site_id
+            };
+
             try {
                 const response = await fetch(`https://n8n61-fa4ea4ac7379.herokuapp.com/webhook-test/kpi-checker-web?userId=${userId}&username=${username}&page=kpi-plans&action=update-data`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(formData),
+                    body: JSON.stringify(dataToSend),
                 });
 
                 if (!response.ok) {
@@ -300,7 +312,10 @@
             const formData = Object.fromEntries(new FormData(e.target));
             try {
                 await saveChanges(formData);
-                kpiData[currentEditIndex] = formData;
+                // Обновляем только редактируемые поля в kpiData
+                Object.keys(formData).forEach(key => {
+                    kpiData[currentEditIndex][key] = formData[key];
+                });
                 createTable(kpiData);
                 document.getElementById('editModal').style.display = 'none';
                 tg.showAlert('Изменения сохранены успешно');
