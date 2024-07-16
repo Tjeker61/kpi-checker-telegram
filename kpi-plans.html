@@ -343,9 +343,23 @@ document.getElementById('editForm').addEventListener('submit', async function(e)
     }
 });
 
-        document.querySelector('.close').addEventListener('click', function() {
-            document.getElementById('editModal').style.display = 'none';
-        });
+        document.querySelector('.save-btn').addEventListener('click', async function(e) {
+    e.preventDefault();
+    console.log('Кнопка "Сохранить" нажата');
+    const formData = Object.fromEntries(new FormData(document.getElementById('editForm')));
+    console.log('Данные формы:', formData);
+
+    try {
+        console.log('Вызов функции saveChanges');
+        const result = await saveChanges(formData);
+        console.log('Результат сохранения:', result);
+
+        // Остальной код обработки результата...
+    } catch (error) {
+        console.error('Ошибка при сохранении:', error);
+        tg.showAlert(`Ошибка при сохранении изменений: ${error.message}`);
+    }
+});
 
         window.onclick = function(event) {
             if (event.target == document.getElementById('editModal')) {
