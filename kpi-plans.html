@@ -165,10 +165,10 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
-                if (!Array.isArray(data) || data.length === 0) {
+                if (!Array.isArray(data) || data.length === 0 || !data[0].kpi_table) {
                     throw new Error('Неверный формат данных или пустой массив');
                 }
-                return data;
+                return data[0].kpi_table;
             } catch (error) {
                 console.error("Ошибка при загрузке данных:", error);
                 throw error;
