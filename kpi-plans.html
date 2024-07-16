@@ -299,7 +299,14 @@
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                const result = await response.json();
+                const responseData = await response.json();
+                // Проверяем, является ли ответ массивом и берем первый элемент
+                const result = Array.isArray(responseData) ? responseData[0] : responseData;
+
+                if (!result.success) {
+                    throw new Error(result.message || 'Неизвестная ошибка при сохранении');
+                }
+
                 return result;
             } catch (error) {
                 console.error("Ошибка при сохранении данных:", error);
@@ -311,16 +318,17 @@
             e.preventDefault();
             const formData = Object.fromEntries(new FormData(e.target));
             try {
-                await saveChanges(formData);
+                const result = await saveChanges(formData);
                 // Обновляем только редактируемые поля в kpiData
                 Object.keys(formData).forEach(key => {
                     kpiData[currentEditIndex][key] = formData[key];
                 });
                 createTable(kpiData);
                 document.getElementById('editModal').style.display = 'none';
-                tg.showAlert('Изменения сохранены успешно');
+                tg.showAlert(result.message || 'Изменения сохранены успешно');
             } catch (error) {
-                tg.showAlert('Ошибка при сохранении изменений');
+                console.error('Ошибка при сохранении:', error);
+                tg.showAlert(`Ошибка при сохранении изменений: ${error.message}`);
             }
         });
 
