@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Тест отправки вебхука</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        input, button {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        #logArea {
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Тест отправки вебхука</h1>
+    <form id="testForm">
+        <input type="text" id="projectId" placeholder="Project ID" value="1">
+        <input type="text" id="kpiId" placeholder="KPI ID" value="1">
+        <input type="text" id="projectSiteId" placeholder="Project Site ID" value="1">
+        <input type="text" id="postingPlan" placeholder="Posting Plan" value="10">
+        <input type="text" id="spentPlanTotal" placeholder="Spent Plan Total" value="1000">
+        <button type="submit">Отправить данные</button>
+    </form>
+    <div id="logArea"></div>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+
+        function log(message) {
+            const logArea = document.getElementById('logArea');
+            logArea.innerHTML += message + '<br>';
+            logArea.scrollTop = logArea.scrollHeight;
+            console.log(message);
+        }
+
+        async function sendWebhook(formData) {
+            const userId = tg.initDataUnsafe?.user?.id || 'test_user';
+            const username = tg.initDataUnsafe?.user?.username || 'test_username';
+
+            const url = `https://n8n61-fa4ea4ac7379.herokuapp.com/webhook-test/kpi-checker-web?userId=${userId}&username=${username}&page=kpi-plans&action=update-data`;
+
+            log(`Отправка запроса на URL: ${url}`);
+            log(`Данные для отправки: ${JSON.stringify(formData)}`);
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData),
+                });
+
+                log(`Статус ответа: ${response.status}`);
+                const responseText = await response.text();
+                log(`Тело ответа: ${responseText}`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                return JSON.parse(responseText);
+            } catch (error) {
+                log(`Ошибка при отправке: ${error.message}`);
+                throw error;
+            }
+        }
+
+        document.getElementById('testForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            log('Форма отправлена');
+
+            const formData = {
+                project_id: document.getElementById('projectId').value,
+                kpi_id: document.getElementById('kpiId').value,
+                project_site_id: document.getElementById('projectSiteId').value,
+                posting_plan: document.getElementById('postingPlan').value,
+                spent_plan_total: document.getElementById('spentPlanTotal').value
+            };
+
+            try {
+                const result = await sendWebhook(formData);
+                log(`Результат: ${JSON.stringify(result)}`);
+                tg.showAlert('Данные успешно отправлены');
+            } catch (error) {
+                log(`Ошибка: ${error.message}`);
+                tg.showAlert(`Ошибка при отправке данных: ${error.message}`);
+            }
+        });
+
+        // Инициализация
+        log('Страница загружена');
+        log(`User ID: ${tg.initDataUnsafe?.user?.id}`);
+        log(`Username: ${tg.initDataUnsafe?.user?.username}`);
+    </script>
+</body>
+</html>
