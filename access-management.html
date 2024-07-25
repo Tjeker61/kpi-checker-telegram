@@ -48,12 +48,16 @@
         .project-item:last-child {
             border-bottom: none;
         }
-        select {
+        select, button {
             padding: 6px;
             border-radius: 4px;
             border: 1px solid var(--tg-theme-hint-color, #cccccc);
-            background-color: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
+            background-color: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            cursor: pointer;
+        }
+        button:hover {
+            opacity: 0.8;
         }
         #loading, #error-message {
             text-align: center;
@@ -64,6 +68,41 @@
         #error-message {
             color: #ff0000;
         }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid var(--tg-theme-hint-color, #cccccc);
+            width: 80%;
+            max-width: 500px;
+            border-radius: 10px;
+        }
+        .close {
+            color: var(--tg-theme-hint-color, #999999);
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover {
+            color: var(--tg-theme-text-color, #000000);
+        }
+        #addAccessForm {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
     </style>
 </head>
 <body>
@@ -72,133 +111,270 @@
     <div id="error-message" style="display:none;"></div>
     <div id="users-container"></div>
 
-    <script>
-        let tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.MainButton.setText("Назад").show().onClick(function(){ window.location.href = 'index.html'; });
+    <div id="addAccessModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Добавить доступ</h2>
+            <form id="addAccessForm">
+                <select id="projectSelect" required>
+                    <option value="">Выберите проект</option>
+                </select>
+                <select id="accessTypeSelect" required>
+                    <option value="user_access">User Access</option>
+                    <option value="promo_access">Promo Access</option>
+                    <option value="full_access">Full Access</option>
+                </select>
+                <button type="submit">Добавить доступ</button>
+            </form>
+        </div>
+    </div>
+<script>
+    let tg = window.Telegram.WebApp;
+    tg.expand();
+    tg.MainButton.setText("Назад").show().onClick(function(){ window.location.href = 'index.html'; });
 
-        let accessData = [];
+    let accessData = [];
+    let allProjects = [];
 
-        async function fetchData() {
-            const userId = tg.initDataUnsafe?.user?.id;
-            const username = tg.initDataUnsafe?.user?.username;
-            
-            if (!userId) {
-                throw new Error('Не удалось получить ID пользователя');
-            }
-
-            try {
-                const response = await fetch(`https://n8n61-fa4ea4ac7379.herokuapp.com/webhook-test/kpi-checker-web?userId=${userId}&username=${username}&page=access-management&action=get-data`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                if (!Array.isArray(data) || data.length === 0 || !data[0].access_table) {
-                    throw new Error('Неверный формат данных или пустой массив');
-                }
-                return data[0].access_table;
-            } catch (error) {
-                console.error("Ошибка при загрузке данных:", error);
-                throw error;
-            }
+    async function fetchData() {
+        const userId = tg.initDataUnsafe?.user?.id;
+        const username = tg.initDataUnsafe?.user?.username;
+        
+        if (!userId) {
+            throw new Error('Не удалось получить ID пользователя');
         }
 
-        function createUserList(data) {
-            const container = document.getElementById('users-container');
-            container.innerHTML = '';
+        try {
+            const response = await fetch(`https://n8n61-fa4ea4ac7379.herokuapp.com/webhook-test/kpi-checker-web?userId=${userId}&username=${username}&page=access-management&action=get-data`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            if (!Array.isArray(data) || data.length === 0 || !data[0].access_table) {
+                throw new Error('Неверный формат данных или пустой массив');
+            }
+            return data[0].access_table;
+        } catch (error) {
+            console.error("Ошибка при загрузке данных:", error);
+            throw error;
+        }
+    }
 
-            data.forEach(user => {
-                const userContainer = document.createElement('div');
-                userContainer.className = 'user-container';
+    function createUserList(data) {
+        const container = document.getElementById('users-container');
+        container.innerHTML = '';
 
-                const userHeader = document.createElement('div');
-                userHeader.className = 'user-header';
-                userHeader.innerHTML = `
-                    <span>${user.username}</span>
-                    <span>▼</span>
-                `;
-                userHeader.onclick = () => toggleProjects(userContainer);
+        data.forEach(user => {
+            const userContainer = document.createElement('div');
+            userContainer.className = 'user-container';
 
-                const userProjects = document.createElement('div');
-                userProjects.className = 'user-projects';
+            const userHeader = document.createElement('div');
+            userHeader.className = 'user-header';
+            userHeader.innerHTML = `
+                <span>${user.username}</span>
+                <span>▼</span>
+            `;
+            userHeader.onclick = () => toggleProjects(userContainer);
 
-                user.project_access.forEach(project => {
-                    const projectItem = document.createElement('div');
-                    projectItem.className = 'project-item';
-                    projectItem.innerHTML = `
-                        <span>${project.project_name}</span>
+            const userProjects = document.createElement('div');
+            userProjects.className = 'user-projects';
+
+            user.project_access.forEach(project => {
+                const projectItem = document.createElement('div');
+                projectItem.className = 'project-item';
+                projectItem.innerHTML = `
+                    <span>${project.project_name}</span>
+                    <div>
                         <select onchange="updateAccess('${user.chat_id}', '${project.project_id}', this.value)">
                             <option value="user_access" ${project.access_type === 'user_access' ? 'selected' : ''}>User Access</option>
                             <option value="promo_access" ${project.access_type === 'promo_access' ? 'selected' : ''}>Promo Access</option>
                             <option value="full_access" ${project.access_type === 'full_access' ? 'selected' : ''}>Full Access</option>
                         </select>
-                    `;
-                    userProjects.appendChild(projectItem);
-                });
-
-                userContainer.appendChild(userHeader);
-                userContainer.appendChild(userProjects);
-                container.appendChild(userContainer);
+                        <button onclick="deleteAccess('${user.chat_id}', '${project.project_id}')">Удалить</button>
+                    </div>
+                `;
+                userProjects.appendChild(projectItem);
             });
+
+            const addAccessButton = document.createElement('button');
+            addAccessButton.textContent = 'Добавить доступ';
+            addAccessButton.onclick = () => showAddAccessModal(user.chat_id);
+            userProjects.appendChild(addAccessButton);
+
+            userContainer.appendChild(userHeader);
+            userContainer.appendChild(userProjects);
+            container.appendChild(userContainer);
+        });
+    }
+
+    function toggleProjects(userContainer) {
+        const projectsDiv = userContainer.querySelector('.user-projects');
+        const arrow = userContainer.querySelector('.user-header span:last-child');
+        if (projectsDiv.style.display === 'none' || projectsDiv.style.display === '') {
+            projectsDiv.style.display = 'block';
+            arrow.textContent = '▲';
+        } else {
+            projectsDiv.style.display = 'none';
+            arrow.textContent = '▼';
         }
+    }
 
-        function toggleProjects(userContainer) {
-            const projectsDiv = userContainer.querySelector('.user-projects');
-            const arrow = userContainer.querySelector('.user-header span:last-child');
-            if (projectsDiv.style.display === 'none' || projectsDiv.style.display === '') {
-                projectsDiv.style.display = 'block';
-                arrow.textContent = '▲';
-            } else {
-                projectsDiv.style.display = 'none';
-                arrow.textContent = '▼';
+    async function updateAccess(chatId, projectId, newAccessType) {
+        const tgUserId = tg.initDataUnsafe?.user?.id;
+        const tgUsername = tg.initDataUnsafe?.user?.username;
+
+        try {
+            const response = await fetch(`https://n8n61-fa4ea4ac7379.herokuapp.com/webhook-test/kpi-checker-web?userId=${tgUserId}&username=${tgUsername}&page=access-management&action=update-access`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chatId: chatId,
+                    projectId: projectId,
+                    accessType: newAccessType
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.message || 'Неизвестная ошибка при обновлении доступа');
+            }
+
+            tg.showAlert('Доступ успешно обновлен');
+        } catch (error) {
+            console.error('Ошибка при обновлении доступа:', error);
+            tg.showAlert(`Ошибка при обновлении доступа: ${error.message}`);
         }
+    }
+async function deleteAccess(chatId, projectId) {
+        const tgUserId = tg.initDataUnsafe?.user?.id;
+        const tgUsername = tg.initDataUnsafe?.user?.username;
 
-        async function updateAccess(chatId, projectId, newAccessType) {
-            const tgUserId = tg.initDataUnsafe?.user?.id;
-            const tgUsername = tg.initDataUnsafe?.user?.username;
+        try {
+            const response = await fetch(`https://n8n61-fa4ea4ac7379.herokuapp.com/webhook-test/kpi-checker-web?userId=${tgUserId}&username=${tgUsername}&page=access-management&action=delete-access`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chatId: chatId,
+                    projectId: projectId
+                }),
+            });
 
-            try {
-                const response = await fetch(`https://n8n61-fa4ea4ac7379.herokuapp.com/webhook-test/kpi-checker-web?userId=${tgUserId}&username=${tgUsername}&page=access-management&action=update-access`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        chatId: chatId,
-                        projectId: projectId,
-                        accessType: newAccessType
-                    }),
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const result = await response.json();
-                if (!result.success) {
-                    throw new Error(result.message || 'Неизвестная ошибка при обновлении доступа');
-                }
-
-                tg.showAlert('Доступ успешно обновлен');
-            } catch (error) {
-                console.error('Ошибка при обновлении доступа:', error);
-                tg.showAlert(`Ошибка при обновлении доступа: ${error.message}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.message || 'Неизвестная ошибка при удалении доступа');
+            }
+
+            tg.showAlert('Доступ успешно удален');
+            // Обновляем данные после успешного удаления
+            accessData = await fetchData();
+            createUserList(accessData);
+        } catch (error) {
+            console.error('Ошибка при удалении доступа:', error);
+            tg.showAlert(`Ошибка при удалении доступа: ${error.message}`);
         }
+    }
 
-        window.onload = async function() {
-            try {
-                accessData = await fetchData();
-                createUserList(accessData);
-                document.getElementById('loading').style.display = 'none';
-            } catch (error) {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error-message').style.display = 'block';
-                document.getElementById('error-message').textContent = `Ошибка: ${error.message}`;
-                console.error("Подробности ошибки:", error);
+    function showAddAccessModal(chatId) {
+        const modal = document.getElementById('addAccessModal');
+        const form = document.getElementById('addAccessForm');
+        const projectSelect = document.getElementById('projectSelect');
+
+        // Очищаем существующие опции
+        projectSelect.innerHTML = '<option value="">Выберите проект</option>';
+
+        // Добавляем все доступные проекты
+        allProjects.forEach(project => {
+            const option = document.createElement('option');
+            option.value = project.project_id;
+            option.textContent = project.project_name;
+            projectSelect.appendChild(option);
+        });
+
+        form.onsubmit = (e) => addAccess(e, chatId);
+        modal.style.display = 'block';
+    }
+
+    async function addAccess(event, chatId) {
+        event.preventDefault();
+        const projectId = document.getElementById('projectSelect').value;
+        const accessType = document.getElementById('accessTypeSelect').value;
+        const tgUserId = tg.initDataUnsafe?.user?.id;
+        const tgUsername = tg.initDataUnsafe?.user?.username;
+
+        try {
+            const response = await fetch(`https://n8n61-fa4ea4ac7379.herokuapp.com/webhook-test/kpi-checker-web?userId=${tgUserId}&username=${tgUsername}&page=access-management&action=add-access`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chatId: chatId,
+                    projectId: projectId,
+                    accessType: accessType
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        };
-    </script>
+
+            const result = await response.json();
+            if (!result.success) {
+                throw new Error(result.message || 'Неизвестная ошибка при добавлении доступа');
+            }
+
+            tg.showAlert('Доступ успешно добавлен');
+            document.getElementById('addAccessModal').style.display = 'none';
+            // Обновляем данные после успешного добавления
+            accessData = await fetchData();
+            createUserList(accessData);
+        } catch (error) {
+            console.error('Ошибка при добавлении доступа:', error);
+            tg.showAlert(`Ошибка при добавлении доступа: ${error.message}`);
+        }
+    }
+
+    // Закрытие модального окна
+    document.querySelector('.close').onclick = function() {
+        document.getElementById('addAccessModal').style.display = 'none';
+    }
+
+    window.onclick = function(event) {
+        if (event.target == document.getElementById('addAccessModal')) {
+            document.getElementById('addAccessModal').style.display = 'none';
+        }
+    }
+
+    window.onload = async function() {
+        try {
+            accessData = await fetchData();
+            // Собираем все уникальные проекты
+            allProjects = Array.from(new Set(accessData.flatMap(user => user.project_access)))
+                .map(project => ({
+                    project_id: project.project_id,
+                    project_name: project.project_name
+                }));
+            createUserList(accessData);
+            document.getElementById('loading').style.display = 'none';
+        } catch (error) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error-message').style.display = 'block';
+            document.getElementById('error-message').textContent = `Ошибка: ${error.message}`;
+            console.error("Подробности ошибки:", error);
+        }
+    };
+</script>
 </body>
 </html>
