@@ -356,25 +356,36 @@ async function deleteAccess(chatId, projectId) {
             document.getElementById('addAccessModal').style.display = 'none';
         }
     }
-
     window.onload = async function() {
-        try {
-            accessData = await fetchData();
-            // Собираем все уникальные проекты
-            allProjects = Array.from(new Set(accessData.flatMap(user => user.project_access)))
-                .map(project => ({
-                    project_id: project.project_id,
-                    project_name: project.project_name
-                }));
-            createUserList(accessData);
-            document.getElementById('loading').style.display = 'none';
-        } catch (error) {
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('error-message').style.display = 'block';
-            document.getElementById('error-message').textContent = `Ошибка: ${error.message}`;
-            console.error("Подробности ошибки:", error);
-        }
-    };
+    try {
+        accessData = await fetchData();
+        // Создаем Map для хранения уникальных проектов
+        const projectMap = new Map();
+        
+        // Собираем все уникальные проекты
+        accessData.forEach(user => {
+            user.project_access.forEach(project => {
+                if (!projectMap.has(project.project_id)) {
+                    projectMap.set(project.project_id, {
+                        project_id: project.project_id,
+                        project_name: project.project_name
+                    });
+                }
+            });
+        });
+        
+        // Преобразуем Map в массив
+        allProjects = Array.from(projectMap.values());
+        
+        createUserList(accessData);
+        document.getElementById('loading').style.display = 'none';
+    } catch (error) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error-message').style.display = 'block';
+        document.getElementById('error-message').textContent = `Ошибка: ${error.message}`;
+        console.error("Подробности ошибки:", error);
+    }
+};
 </script>
 </body>
 </html>
