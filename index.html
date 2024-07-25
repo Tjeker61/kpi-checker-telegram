@@ -48,6 +48,13 @@
         .nav-button:active {
             opacity: 0.8;
         }
+        .nav-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #buttons-container {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -57,9 +64,11 @@
         <div class="auth-status">Статус авторизации: <span id="auth-result">Проверка...</span></div>
     </div>
 
-    <button class="nav-button" onclick="navigateTo('kpi-plans.html')">KPI Планы</button>
-    <button class="nav-button" onclick="navigateTo('ad-lists.html')">Кампании</button>
-    <button class="nav-button" onclick="navigateTo('access-management.html')">Управление доступом (admin)</button>
+    <div id="buttons-container">
+        <button class="nav-button" id="kpi-plans-btn" onclick="navigateTo('kpi-plans.html')">KPI Планы</button>
+        <button class="nav-button" id="ad-lists-btn" onclick="navigateTo('ad-lists.html')">Кампании</button>
+        <button class="nav-button" id="log-btn" onclick="navigateTo('log.html')">Тесты, не жми сюда</button>
+    </div>
 
     <script>
         let tg = window.Telegram.WebApp;
@@ -84,11 +93,41 @@
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                const data = await response.text();
-                document.getElementById('auth-result').textContent = data;
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('auth-result').textContent = `Авторизован как ${data.username} (${data.role})`;
+                    showButtons(data.role);
+                } else {
+                    document.getElementById('auth-result').textContent = 'Ошибка авторизации';
+                }
             } catch (error) {
                 console.error("Ошибка при авторизации:", error);
                 document.getElementById('auth-result').textContent = 'Ошибка при авторизации';
+            }
+        }
+
+        function showButtons(role) {
+            const buttonsContainer = document.getElementById('buttons-container');
+            buttonsContainer.style.display = 'block';
+
+            const kpiPlansBtn = document.getElementById('kpi-plans-btn');
+            const adListsBtn = document.getElementById('ad-lists-btn');
+            const logBtn = document.getElementById('log-btn');
+
+            // Здесь вы можете настроить доступ к кнопкам в зависимости от роли
+            // Например:
+            if (role === 'admin') {
+                kpiPlansBtn.disabled = false;
+                adListsBtn.disabled = false;
+                logBtn.disabled = false;
+            } else if (role === 'user') {
+                kpiPlansBtn.disabled = false;
+                adListsBtn.disabled = false;
+                logBtn.disabled = true;
+            } else {
+                kpiPlansBtn.disabled = true;
+                adListsBtn.disabled = true;
+                logBtn.disabled = true;
             }
         }
 
